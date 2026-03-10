@@ -186,6 +186,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "graphviz" },
     { name = "openai-agents", extra = ["viz"] },
+    { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "streamlit" },
 ]
@@ -199,6 +200,7 @@ dev = [
 requires-dist = [
     { name = "graphviz", specifier = ">=0.21" },
     { name = "openai-agents", extras = ["viz"], specifier = ">=0.2.6" },
+    { name = "pydantic", specifier = ">=2.12.5" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "streamlit", specifier = ">=1.48.0" },
 ]
