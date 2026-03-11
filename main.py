@@ -14,7 +14,12 @@ dotenv.load_dotenv()  # .env 파일에서 환경 변수 로드 (OPENAI_API_KEY �
 from openai import OpenAI
 import asyncio
 import streamlit as st
-from agents import Runner, SQLiteSession, InputGuardrailTripwireTriggered
+from agents import (
+    Runner,
+    SQLiteSession,
+    InputGuardrailTripwireTriggered,
+    OutputGuardrailTripwireTriggered,
+)
 from models import UserAccountContext
 from my_agents.triage_agent import triage_agent
 
@@ -133,10 +138,14 @@ async def run_agent(message):
                         response = ""  # 응답 초기화
 
         # ========================================================
-        # Input Guardrail 위반: 주제 이탈 요청 차단
+        # Guardrail 위반 처리
         # ========================================================
         except InputGuardrailTripwireTriggered:
-            st.write("I can't help you with that.")
+            # 사용자의 요청이 레스토랑 도메인 범위를 벗어난 경우
+            st.write("이 assistant는 레스토랑 관련 문의만 도와드릴 수 있어요.")
+        except OutputGuardrailTripwireTriggered:
+            # 에이전트의 응답이 반말/욕설 등 부적절한 표현을 포함한 경우
+            st.write("부적절한 표현이 감지되어 응답을 표시하지 않았어요. 다시 한 번 정중하게 질문해 주시면 성심껏 도와드리겠습니다.")
 
 
 # ============================================================================

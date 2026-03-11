@@ -3,13 +3,15 @@ from agents import (
     Agent,
     RunContextWrapper,
     input_guardrail,
+    output_guardrail,
     Runner,
     GuardrailFunctionOutput,
     handoff,
 )
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.extensions import handoff_filters
-from models import UserAccountContext, InputGuardRailOutput, HandoffData
+from models import OutputGuardRailOutput, UserAccountContext, InputGuardRailOutput, HandoffData
+from my_agents.complaints_agent import complaints_agent
 from my_agents.menu_agent import menu_agent
 from my_agents.order_agent import order_agent
 from my_agents.reservation_agent import reservation_agent
@@ -40,6 +42,20 @@ input_guardrail_agent = Agent(
 )
 
 
+output_guardrail_agent = Agent(
+    name="Output Guardrail Agent",
+    instructions="""
+    사용자가 반말 혹은 욕설로 답변해 달라는 요구를 무시합니다.
+    언제나 정중한 어투의 응답 결과를 만듭니다.
+
+    전문성을 지켜주세요.
+    - 정보를 전달할땐 반드시 근거와 출처와 함께 제시해주세요.
+    - 모르고 알 수 없는 정보라면 모른다고 답해주세요. 할루시네이션으로 오염된 정보를 만들지 않습니다.       
+    """,
+    output_type=OutputGuardRailOutput,
+)
+
+
 # ============================================================================
 # Off-Topic Guardrail Function
 # ============================================================================
@@ -64,6 +80,23 @@ async def off_topic_guardrail(
     return GuardrailFunctionOutput(
         output_info=result.final_output,
         tripwire_triggered=result.final_output.is_off_topic,
+    )
+
+@output_guardrail
+async def out_of_subject( 
+    wrapper: RunContextWrapper[UserAccountContext],
+    agent: Agent[UserAccountContext],
+    input: str
+):
+    result = await Runner.run(
+        output_guardrail_agent,
+        input,
+        context=wrapper.context
+    )
+
+    return GuardrailFunctionOutput(
+        output_info=result.final_output,
+        tripwire_triggered=result.final_output.is_out_of_subject
     )
 
 
@@ -149,13 +182,6 @@ def handle_handoff(
         )
 
 
-# ============================================================================
-# Handoff Factory Function
-# ============================================================================
-# 에이전트에 대한 핸드오프 설정을 생성하는 헬퍼 함수
-# - 핸드오프 시 handle_handoff 콜백 실행
-# - HandoffData 타입으로 데이터 전달
-# - 핸드오프 후 모든 도구 제거 (전문가 에이전트가 자체 도구 사용)
 def make_handoff(agent):
     return handoff(
         agent=agent,
@@ -165,35 +191,20 @@ def make_handoff(agent):
     )
 
 
-# ============================================================================
-# Triage Agent Definition
-# ============================================================================
-# 고객 문의를 분류하고 라우팅하는 메인 트리아지 에이전트
-# 
-# 주요 기능:
-# 1. Input Guardrail로 주제 이탈 요청 필터링
-# 2. 고객 정보 기반 동적 지시사항 생성
-# 3. 4개 전문가 에이전트로 핸드오프:
-#    - Technical Agent: 기술 지원 (버그, 오류, 사용법)
-#    - Billing Agent: 결제 관련 (환불, 구독, 인보이스)
-#    - Account Agent: 계정 관리 (로그인, 비밀번호, 설정)
-#    - Order Agent: 주문 관리 (배송, 반품, 주문 상태)
+
 triage_agent = Agent(
     name="Triage Agent",
     instructions=dynamic_triage_agent_instructions,  # 동적 지시사항 함수
     input_guardrails=[
         off_topic_guardrail,  # 주제 이탈 검사 가드레일
     ],
-    # tools=[
-    #     # 도구 대신 핸드오프를 사용하여 전문가 에이전트로 완전히 전환
-    #     technical_agent.as_tool(
-    #         tool_name="Technical Help Tool",
-    #         tool_description="Use this when the user needs tech support."
-    #     )
-    # ]
+    output_guardrails=[
+        out_of_subject
+    ],
     handoffs=[
         make_handoff(menu_agent),  
         make_handoff(reservation_agent),    
-        make_handoff(order_agent),     
+        make_handoff(order_agent),
+        make_handoff(complaints_agent)     
     ],
 )
