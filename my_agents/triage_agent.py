@@ -200,7 +200,7 @@ triage_agent = Agent(
         off_topic_guardrail,  # 주제 이탈 검사 가드레일
     ],
     output_guardrails=[
-        out_of_subject
+        out_of_subject,
     ],
     handoffs=[
         make_handoff(menu_agent),  
