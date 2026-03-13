@@ -195,6 +195,7 @@ def make_handoff(agent):
 triage_agent = Agent(
     name="Triage Agent",
     instructions=dynamic_triage_agent_instructions,  # 동적 지시사항 함수
+    output_guardrails=[],
     input_guardrails=[
         off_topic_guardrail,  # 주제 이탈 검사 가드레일
     ],

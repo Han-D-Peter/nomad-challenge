@@ -1,0 +1,5 @@
+graphviz>=0.21
+openai-agents[viz]>=0.2.6
+pydantic>=2.12.5
+python-dotenv>=1.1.1
+streamlit>=1.48.0
